@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f8a4c">
+<title>SANTÉ-CI</title>
+<style>
+:root{--bg:#f3f6f3;--card:#fff;--ink:#17261d;--mute:#6b7a70;--g:#1f8a4c;--gd:#0b4a2b;--gl:#cfe9d6;--line:#dfe6e1;--red:#d64545;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root{--bg:#101a14;--card:#18261d;--ink:#e8f1ea;--mute:#93a498;--gl:#24402f;--line:#2a3b30}}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 "Trebuchet MS",system-ui,sans-serif}
+#app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column}
+header{background:var(--g);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+header button{background:none;border:0;color:#fff;font-size:22px;padding:0 6px}
+main{flex:1;overflow:auto;padding:16px}
+h1{font-size:26px;color:var(--gd);margin:8px 0 16px}h2{margin:14px 0 8px}h3{margin:14px 0 6px}
+@media(prefers-color-scheme:dark){h1{color:#7fd6a0}}
+input,select{width:100%;padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:10px}
+.btn{width:100%;padding:13px;border:0;border-radius:10px;background:var(--g);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.btn.d{background:var(--gd)}.btn.l{background:var(--gl);color:var(--gd)}.btn:disabled{opacity:.5}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;color:var(--ink)}
+.pill{font-size:13px;display:inline-flex;align-items:center;gap:5px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--g)}.dot.c{background:var(--red)}
+.pharm{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;font:inherit;color:inherit}
+button.card{cursor:pointer;font:inherit}
+.mute{color:var(--mute);font-size:14px}
+nav{display:flex;justify-content:space-around;background:var(--card);border-top:1px solid var(--line);padding:8px}
+nav button{background:none;border:0;color:var(--mute);font:inherit;font-size:13px;padding:6px 8px}
+nav button.on{color:var(--g);font-weight:700}
+.pay{display:flex;align-items:center;gap:10px;width:100%;background:var(--card);border:2px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;font:inherit;color:var(--ink);cursor:pointer}
+.pay.on{border-color:var(--g)}
+.steps{display:flex;gap:6px;margin:10px 0}.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}.steps i.on{background:var(--g)}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--gd);color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;max-width:90%;text-align:center;z-index:9}
+a.btn{display:block;text-align:center;text-decoration:none}
+:focus-visible{outline:3px solid #f07a22;outline-offset:2px}
+</style></head><body>
+<div id="app"><header id="hd"></header><main id="mn"></main><nav id="nv"></nav></div>
+<noscript>Activez JavaScript pour utiliser SANTÉ-CI.</noscript>
+<script>
+const URL_="https://avosxuwtutkwrejdmryd.supabase.co",KEY="sb_publishable_3k8qCYDd9yt91_HbPqkqWw_8Igj3zVw";
+const $=id=>document.getElementById(id);
+const E=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const XOF=n=>(Number(n)||0).toLocaleString("fr-FR")+" XOF";
+const ST={en_attente_paiement:"En attente de paiement",confirmee:"Commande confirmée",en_preparation:"En préparation",en_livraison:"En livraison",livree:"Livrée",retiree:"Retirée",annulee:"Annulée"};
+const PAY=["Orange Money","Wave","Moov Money","MTN Money"];
+const NAV={patient:[["pharm","Pharmacies"],["ord","Ordonnance"],["hist","Historique"]],pharmacie:[["pv","Ventes"],["rx","Ordonnances"],["stk","Stock"]],admin:[["adm","Pharmacies"],["pv","Ventes"],["liv","Livreurs"],["com","Caisse"],["set","Réglages"]],livreur:[["liv","Courses"]]};
+const HOME={patient:"pharm",pharmacie:"pv",admin:"adm",livreur:"liv"};
+const TITLE={pharm:"Pharmacies",det:"Pharmacie",chk:"Commande",ord:"Ordonnance",hist:"Historique",rec:"Reçu",pv:"Ventes",stk:"Stock",adm:"Pharmacies",com:"Caisse",set:"Réglages",liv:"Livreurs",rx:"Ordonnances"};
+const S={view:"welcome",tok:null,rt:null,uid:null,email:null,role:null,prof:null,pharm:[],ph:null,cart:[],mode:"livraison",addr:"",pm:0,set:{},orders:[],o:null,cour:null,ordId:null,rx:[],blob:null,rxPrev:null,rxStage:0,myPh:null,stock:[],caisse:0,rows:[],couriers:[],rxView:"home",rxList:[],rxIn:[],rxImg:{},rxphId:"",loading:false,busy:false};
+
+/* ---------- session et accès au serveur ---------- */
+function saveSes(){try{localStorage.setItem("sci_ses",JSON.stringify({tok:S.tok,rt:S.rt,uid:S.uid,email:S.email}))}catch(e){}}
+function loadSes(){try{const s=JSON.parse(localStorage.getItem("sci_ses"));if(s&&s.tok)Object.assign(S,s)}catch(e){}}
+function clearSes(){try{localStorage.removeItem("sci_ses")}catch(e){}S.tok=S.rt=S.uid=S.email=S.role=S.prof=S.myPh=null}
+async function refresh(){if(!S.rt)return false;try{const r=await fetch(URL_+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:S.rt})});if(!r.ok)return false;const j=await r.json();S.tok=j.access_token;S.rt=j.refresh_token;saveSes();return true}catch(e){return false}}
+async function api(path,opt){opt=opt||{};const h=Object.assign({apikey:KEY,"Content-Type":"application/json"},S.tok?{Authorization:"Bearer "+S.tok}:{},opt.headers||{});
+ const r=await fetch(URL_+path,Object.assign({},opt,{headers:h}));
+ if(r.status===401&&S.rt&&!opt._retry&&!path.startsWith("/auth/")){if(await refresh())return api(path,Object.assign({},opt,{_retry:1}))}
+ const t=await r.text();let j=null;try{j=t?JSON.parse(t):null}catch(e){}
+ if(!r.ok)throw new Error((j&&(j.message||j.msg||j.error_description||j.error))||("Erreur "+r.status));return j}
+const rest=(p,o)=>api("/rest/v1/"+p,o);
+const get=p=>rest(p);
+const post=(t,b,pref)=>rest(t,{method:"POST",body:JSON.stringify(b),headers:{Prefer:pref||"return=representation"}});
+const patch=(p,b)=>rest(p,{method:"PATCH",body:JSON.stringify(b),headers:{Prefer:"return=representation"}});
+const remove=p=>rest(p,{method:"DELETE"});
+const rpc=(f,a)=>rest("rpc/"+f,{method:"POST",body:JSON.stringify(a||{})});
+async function upload(path,blob,retry){const r=await fetch(URL_+"/storage/v1/object/prescriptions/"+path,{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+S.tok,"Content-Type":blob.type||"image/jpeg"},body:blob});
+ if(r.status===401&&!retry&&await refresh())return upload(path,blob,1);
+ if(!r.ok){let t="";try{t=(await r.json()).message}catch(e){}throw new Error(t||"Envoi de la photo impossible")}}
+
+/* ---------- utilitaires ---------- */
+function msg(e){const m=String(e&&e.message||e);
+ if(/Invalid login/i.test(m))return"Email ou mot de passe incorrect";
+ if(/already registered|already been registered/i.test(m))return"Cet email a déjà un compte";
+ if(/Password should/i.test(m))return"Mot de passe trop court (6 caractères minimum)";
+ if(/not confirmed/i.test(m))return"Confirmez d'abord votre email";
+ if(/Failed to fetch|NetworkError|Load failed/i.test(m))return"Connexion internet impossible";
+ if(/duplicate key/i.test(m)&&/chassis/i.test(m))return"Ce numéro de châssis est déjà enregistré";
+ if(/duplicate key/i.test(m)&&/license/i.test(m))return"Ce numéro de permis est déjà enregistré";
+ return m}
+function toast(t){let el=$("toast");if(!el){el=document.createElement("div");el.id="toast";el.className="toast";el.setAttribute("role","status");document.body.appendChild(el)}el.textContent=t;el.style.display="block";clearTimeout(S.tt);S.tt=setTimeout(()=>{el.style.display="none"},3200)}
+async function run(f){if(S.busy)return;S.busy=true;try{await f()}catch(e){toast(msg(e))}finally{S.busy=false}}
+const mins=t=>{const a=String(t).split(":");return +a[0]*60+ +a[1]};
+const hh=t=>String(t).slice(0,5);
+function isOpen(p){const d=new Date(),m=d.getHours()*60+d.getMinutes(),o=mins(p.opens_at),c=mins(p.closes_at);return o<=c?(m>=o&&m<c):(m>=o||m<c)}
+const fd=s=>{const d=new Date(s);return d.toLocaleDateString("fr-FR")+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})};
+const total=o=>(o.subtotal_xof||0)+(o.delivery_fee_xof||0);
+const sum=(a,f)=>a.reduce((x,y)=>x+(Number(f(y))||0),0);
+const stOf=o=>(o.status==="annulee"||o.status==="en_attente_paiement")?0:1;
+
+/* ---------- connexion ---------- */
+async function doLogin(){const e=$("em").value.trim(),p=$("pw").value;if(!e||!p)return toast("Entrez votre email et votre mot de passe");
+ await run(async()=>{S.tok=null;const j=await api("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email:e,password:p})});
+  S.tok=j.access_token;S.rt=j.refresh_token;S.uid=j.user.id;S.email=j.user.email;saveSes();await afterLogin()})}
+async function doReg(){const e=$("em").value.trim(),p=$("pw").value,n=$("nm").value.trim(),t=$("tl").value.trim();
+ if(n.length<3)return toast("Entrez votre nom complet");if(!/^\S+@\S+\.\S+$/.test(e))return toast("Entrez un email valide");if(p.length<6)return toast("Mot de passe : 6 caractères minimum");
+ await run(async()=>{S.tok=null;const j=await api("/auth/v1/signup",{method:"POST",body:JSON.stringify({email:e,password:p})});
+  try{localStorage.setItem("sci_pending",JSON.stringify({n,t}))}catch(x){}
+  if(j&&j.access_token){S.tok=j.access_token;S.rt=j.refresh_token;S.uid=j.user.id;S.email=j.user.email;saveSes();await afterLogin()}
+  else{toast("Compte créé. Confirmez votre email, puis connectez-vous.");await go("login")}})}
+async function afterLogin(){const r=await get("profiles?id=eq."+S.uid+"&select=*");S.prof=r[0]||null;
+ try{const pe=JSON.parse(localStorage.getItem("sci_pending"));if(pe&&S.prof&&!S.prof.full_name){await patch("profiles?id=eq."+S.uid,{full_name:pe.n,phone:pe.t});S.prof.full_name=pe.n}localStorage.removeItem("sci_pending")}catch(x){}
+ S.role=(S.prof&&S.prof.role)||"patient";S.myPh=null;
+ if(S.role==="pharmacie"){const s=await get("pharmacy_staff?user_id=eq."+S.uid+"&select=pharmacy_id,pharmacies(*)");S.myPh=s[0]?s[0].pharmacies:null}
+ await go(HOME[S.role]||"pharm")}
+function logout(){clearSes();S.cart=[];S.rx=[];S.blob=null;go("welcome")}
+async function boot(){loadSes();if(S.tok){await run(async()=>{try{await afterLogin()}catch(e){clearSes();await go("welcome")}});if(S.view==="welcome"&&S.tok)return}await go("welcome")}
+
+/* ---------- navigation ---------- */
+const LOAD={
+ async pharm(){await loadPharm()},
+ async ord(){await loadPharm();S.rxList=await get("prescriptions?select=*,prescription_items(*)&patient_id=eq."+S.uid+"&order=created_at.desc&limit=30")},
+ async adm(){await loadPharm()},
+ async chk(){const r=await get("settings?select=key,value");S.set={};r.forEach(x=>S.set[x.key]=+x.value)},
+ async hist(){S.orders=await get("orders?select=*,pharmacies(name),order_items(name,quantity)&patient_id=eq."+S.uid+"&order=created_at.desc&limit=100")},
+ async rec(){const r=await get("orders?id=eq."+S.ordId+"&select=*,order_items(*),pharmacies(name,address,phone)");S.o=r[0]||null;S.cour=null;
+  if(S.o&&S.o.courier_id){try{const c=await rpc("get_order_courier",{p_order:S.o.id});S.cour=c&&c[0]}catch(e){}}},
+ async pv(){S.orders=await get("orders?select=*,order_items(name,quantity,unit_price_xof),pharmacies(name)&status=neq.en_attente_paiement&order=created_at.desc&limit=100");
+  S.caisse=0;if(S.role==="pharmacie"&&S.myPh){const l=await get("ledger?owner_type=eq.pharmacie&owner_id=eq."+S.myPh.id+"&select=amount_xof");S.caisse=sum(l,x=>x.amount_xof)}},
+ async stk(){S.stock=S.myPh?await get("stock?pharmacy_id=eq."+S.myPh.id+"&order=name"):[]},
+ async rx(){if(!S.myPh){S.rxIn=[];S.stock=[];return}S.stock=await get("stock?pharmacy_id=eq."+S.myPh.id+"&order=name");S.rxIn=await get("prescriptions?select=*,prescription_items(*)&pharmacy_id=eq."+S.myPh.id+"&order=created_at.desc&limit=50")},
+ async liv(){if(S.role==="admin")S.couriers=await get("couriers?select=*,profiles(full_name,phone)&order=status")},
+ async com(){S.rows=await get("ledger?select=owner_type,amount_xof&limit=1000")},
+ async set(){const r=await get("settings?select=key,value");S.set={};r.forEach(x=>S.set[x.key]=+x.value)}
+};
+async function loadPharm(){S.pharm=await get("pharmacies?select=*,stock(*)&is_active=eq.true&order=name")}
+async function go(v,x){Object.assign(S,x||{});S.view=v;S.loading=true;draw();try{if(LOAD[v])await LOAD[v]()}catch(e){toast(msg(e))}S.loading=false;draw();window.scrollTo(0,0)}
+const back=()=>({det:"pharm",chk:"det",rec:S.role==="patient"?"hist":"",stk:S.role==="admin"?"adm":""}[S.view]||"");
+function draw(){const v=S.view,auth=["welcome","login","reg"].indexOf(v)>=0;
+ $("hd").style.display=auth?"none":"flex";$("nv").style.display=auth?"none":"flex";
+ if(!auth){const b=back();$("hd").innerHTML=(b?`<button onclick="go('${b}')" aria-label="Retour">‹</button>`:"")+`<span style="flex:1">${TITLE[v]||""}</span><button style="font-size:14px" onclick="logout()">Quitter</button>`;
+  $("nv").innerHTML=(NAV[S.role]||[]).map(a=>`<button class="${v===a[0]?"on":""}" onclick="go('${a[0]}')">${a[1]}</button>`).join("")}
+ $("mn").innerHTML=S.loading?`<p class="mute" style="text-align:center;margin-top:40px">Chargement…</p>`:(V[v]?V[v]():"")}
+
+/* ---------- panier ---------- */
+const cartQ=id=>{const c=S.cart.find(x=>x.id===id);return c?c.q:0};
+const cartTotal=()=>sum(S.cart,c=>c.q*c.price);
+function cartAdd(id,d){const s=S.ph.stock.find(x=>x.id===id);if(!s)return;const c=S.cart.find(x=>x.id===id);const q=Math.max(0,Math.min(s.quantity,(c?c.q:0)+d));
+ if(c){c.q=q;if(!q)S.cart=S.cart.filter(x=>x.id!==id)}else if(q)S.cart.push({id:s.id,name:s.name,q:q,price:s.price_xof});draw()}
+function openPh(i){S.ph=S.pharm[i];S.cart=[];go("det")}
+async function payNow(){if(!S.cart.length)return;if(S.mode==="livraison"&&(S.addr||"").trim().length<4)return toast("Entrez votre adresse de livraison");
+ await run(async()=>{const items=S.cart.map(c=>({name:c.name,quantity:c.q}));
+  const id=await rpc("create_order",{p_pharmacy:S.ph.id,p_items:items,p_mode:S.mode,p_address:S.mode==="livraison"?S.addr:null});
+  await rpc("test_pay",{p_order:id,p_method:PAY[S.pm]});S.cart=[];toast("Paiement validé");await go("rec",{ordId:id})})}
+
+/* ---------- ordonnance ---------- */
+function pick(el){const f=el.files&&el.files[0];if(!f)return;const r=new FileReader();r.onerror=()=>toast("Impossible de lire la photo");
+ r.onload=()=>{const im=new Image();im.onerror=()=>toast("Format non pris en charge. Utilisez une photo JPG ou PNG");
+  im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+   S.rxPrev=c.toDataURL("image/jpeg",.8);c.toBlob(b=>{S.blob=b;S.rxStage=0;draw()},"image/jpeg",.8)};im.src=r.result};r.readAsDataURL(f)}
+function addRx(){const n=$("rn").value.trim(),q=parseInt($("rq").value)||1;if(!n)return toast("Entrez le nom du médicament");
+ const ex=S.rx.find(x=>x.k.toLowerCase()===n.toLowerCase());if(ex)ex.q+=q;else S.rx.push({k:n,q:q});draw()}
+function chRx(i,d){S.rx[i].q=Math.max(1,S.rx[i].q+d);draw()}
+function delRx(i){S.rx.splice(i,1);draw()}
+function findRx(){if(!S.blob)return toast("Ajoutez la photo de l'ordonnance");if(!S.rx.length)return toast("Ajoutez les médicaments de l'ordonnance");S.rxStage=1;draw()}
+const norm=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const baseW=t=>(norm(t).match(/[a-z]{3,}/)||[""])[0];
+const nums=t=>norm(t).match(/\d+/g)||[];
+function matchStock(st,name){const n=norm(name),nn=n.replace(/ /g,"");
+ let s=st.find(y=>norm(y.name)===n)||st.find(y=>norm(y.name).replace(/ /g,"")===nn);if(s)return{s:s,alt:[]};
+ const b=baseW(name),dn=nums(name),same=st.filter(y=>{const yb=baseW(y.name);return b.length>=3&&yb.length>=3&&(yb.indexOf(b)===0||b.indexOf(yb)===0)});
+ s=dn.length?same.find(y=>dn.every(d=>nums(y.name).indexOf(d)>=0)):same[0];s=s||null;
+ return{s:s,alt:same.filter(y=>y!==s).map(y=>y.name)}}
+function rxCalc(p){const st=p.stock||[],L=S.rx.map(x=>{const m=matchStock(st,x.k),s=m.s;return{k:s?s.name:x.k,q:x.q,id:s?s.id:null,u:s?s.price_xof:0,n:s?s.quantity:0,ok:!!s&&s.quantity>=x.q,alt:m.alt}}),ok=L.filter(l=>l.ok);return{L:L,ok:ok,tot:sum(ok,l=>l.q*l.u)}}
+async function rxGo(i){const p=S.pharm[i],c=rxCalc(p);if(!c.ok.length||!isOpen(p))return;
+ await run(async()=>{const path=S.uid+"/"+Date.now()+".jpg";await upload(path,S.blob);
+  const r=await post("prescriptions",{patient_id:S.uid,pharmacy_id:p.id,image_path:path,status:"envoyee"});
+  await post("prescription_items",S.rx.map(x=>({prescription_id:r[0].id,name:x.k,quantity:x.q})),"return=minimal");
+  S.ph=p;S.cart=c.ok.map(l=>({id:l.id,name:l.k,q:l.q,price:l.u}));S.rx=[];S.blob=null;S.rxPrev=null;S.rxStage=0;await go("chk")})}
+
+/* ---------- reçu ---------- */
+function recTxt(o,c){return["REÇU SANTÉ-CI "+o.ref,"Date : "+fd(o.created_at),"Pharmacie : "+(o.pharmacies?o.pharmacies.name:""),"Adresse : "+(o.pharmacies?o.pharmacies.address:""),"Tél : "+((o.pharmacies&&o.pharmacies.phone)||"non renseigné")]
+ .concat((o.order_items||[]).map(i=>i.name+" x"+i.quantity+" ("+i.unit_price_xof+" XOF)"),[o.mode==="livraison"?"Livraison : "+o.delivery_fee_xof+" XOF":"Retrait en pharmacie","Total payé : "+total(o)+" XOF","Paiement : "+(o.payment_method||"")]).concat(o.mode==="livraison"?["Livreur : "+(c?c.full_name+", tél "+c.phone+", moto •••• "+c.chassis_last4:"à attribuer")]:[]).join("\n")}
+async function shareRec(){const t=recTxt(S.o,S.cour);try{if(navigator.share){await navigator.share({title:"Reçu SANTÉ-CI",text:t});return}}catch(e){}try{await navigator.clipboard.writeText(t);toast("Reçu copié")}catch(e){toast("Faites une capture d'écran du reçu")}}
+
+/* ---------- pharmacie et administration ---------- */
+async function setSt(id,st){await run(async()=>{await patch("orders?id=eq."+id,{status:st});await go("pv")})}
+function stockRow(id){const q=parseInt($("q_"+id).value),p=parseInt($("p_"+id).value);if(isNaN(q)||q<0||isNaN(p)||p<=0)return null;return{quantity:q,price_xof:p,updated_at:new Date().toISOString()}}
+async function saveStock(id){const b=stockRow(id);if(!b)return toast("Quantité et prix invalides");await run(async()=>{await patch("stock?id=eq."+id,b);toast("Enregistré");await go("stk")})}
+async function delStock(id){await run(async()=>{await remove("stock?id=eq."+id);await go("stk")})}
+async function addStock(){const n=$("sn").value.trim(),q=parseInt($("sq").value),p=parseInt($("sp").value);if(!n||isNaN(q)||q<0||isNaN(p)||p<=0)return toast("Nom, quantité et prix sont requis");
+ await run(async()=>{const ex=S.stock.find(s=>s.name.toLowerCase()===n.toLowerCase());
+  if(ex)await patch("stock?id=eq."+ex.id,{quantity:q,price_xof:p,updated_at:new Date().toISOString()});else await post("stock",{pharmacy_id:S.myPh.id,name:n,quantity:q,price_xof:p},"return=minimal");
+  toast(ex?"Médicament mis à jour":"Médicament ajouté");await go("stk")})}
+function manage(i){S.myPh=S.pharm[i];go("stk")}
+async function addPharm(){const n=$("pn").value.trim(),a=$("pa").value.trim();if(!n||!a)return toast("Nom et adresse sont requis");
+ await run(async()=>{await post("pharmacies",{name:n,address:a,phone:$("pt").value.trim()||null,opens_at:$("po").value\vert{}\vert{}"08:00",closes_at:$("pc").value||"20:00"},"return=minimal");toast("Pharmacie ajoutée");await go("adm")})}
+async function linkStaff(){const e=$("le").value.trim(),p=$("lp").value;if(!e||!p)return toast("Choisissez un email et une pharmacie");
+ await run(async()=>{await rpc("admin_link_staff",{p_email:e,p_pharmacy:p});toast("Compte associé à la pharmacie")})}
+async function saveSet(k){const v=parseFloat($("s_"+k).value);if(isNaN(v)||v<0)return toast("Valeur invalide");await run(async()=>{await patch("settings?key=eq."+k,{value:v});toast("Enregistré");await go("set")})}
+
+/* ---------- import par fichier, livreurs ---------- */
+function csv(t){t=t.replace(/^\uFEFF/,"");const first=(t.split(/\r?\n/)[0]||""),d=first.indexOf(";")>=0?";":(first.indexOf("\t")>=0?"\t":",");const rows=[];let row=[],f="",q=false;
+ const end=()=>{row.push(f);f="";if(row.some(x=>x.trim()!==""))rows.push(row.map(x=>x.trim()));row=[]};
+ for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}else if(c==='"')q=true;else if(c===d){row.push(f);f=""}else if(c==="\n"||c==="\r"){if(c==="\r"&&t[i+1]==="\n")i++;end()}else f+=c}
+ end();return rows}
+function dl(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+text],{type:"text/csv"}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function tpl(k){if(k==="s")dl("modele-stock.csv","nom;quantite;prix\nDoliprane 500mg;20;500\nSpasfon lyoc;10;1500\n");else dl("modele-pharmacies.csv","nom;adresse;telephone;ouverture;fermeture\nPharmacie Exemple;Cocody, pres du marche;+225 27 00 00 00 00;08:00;20:00\n")}
+function readFile(el,fn){const f=el.files&&el.files[0];if(!f)return;const r=new FileReader();r.onerror=()=>toast("Impossible de lire le fichier");r.onload=()=>run(async()=>{await fn(String(r.result));el.value=""});r.readAsText(f)}
+function impStock(el){readFile(el,async txt=>{const add=[],upd=[],seen={};let bad=0;
+ csv(txt).forEach((c,i)=>{const n=(c[0]||"").trim(),q=parseInt(c[1]),p=parseInt(c[2]);if(!n||isNaN(q)||isNaN(p)||q<0||p<=0){if(i>0)bad++;return}
+  const k=n.toLowerCase();if(seen[k]){bad++;return}seen[k]=1;const ex=S.stock.find(s=>s.name.toLowerCase()===k);
+  if(ex)upd.push({id:ex.id,q:q,p:p});else add.push({pharmacy_id:S.myPh.id,name:n,quantity:q,price_xof:p})});
+ if(add.length+upd.length>1000)throw new Error("Fichier trop grand (1000 lignes maximum)");
+ if(!add.length&&!upd.length)throw new Error("Aucune ligne valide. Colonnes attendues : nom;quantite;prix");
+ if(add.length)await post("stock",add,"return=minimal");
+ for(let i=0;i<upd.length;i+=10)await Promise.all(upd.slice(i,i+10).map(u=>patch("stock?id=eq."+u.id,{quantity:u.q,price_xof:u.p,updated_at:new Date().toISOString()})));
+ toast(add.length+" ajouté(s), "+upd.length+" mis à jour"+(bad?", "+bad+" ligne(s) ignorée(s)":""));await go("stk")})}
+function impPharm(el){readFile(el,async txt=>{const ex={},add=[];let bad=0;S.pharm.forEach(p=>ex[p.name.toLowerCase()]=1);
+ const tm=s=>/^\d{1,2}:\d{2}$/.test(s||"")?s.padStart(5,"0"):null;
+ csv(txt).forEach((c,i)=>{const n=(c[0]||"").trim(),a=(c[1]||"").trim();if(!n||!a||/^nom$/i.test(n)){if(i>0)bad++;return}
+  if(ex[n.toLowerCase()]){bad++;return}ex[n.toLowerCase()]=1;add.push({name:n,address:a,phone:(c[2]||"").trim()||null,opens_at:tm(c[3])||"08:00",closes_at:tm(c[4])||"20:00"})});
+ if(add.length>500)throw new Error("Fichier trop grand (500 lignes maximum)");
+ if(!add.length)throw new Error("Aucune nouvelle pharmacie dans le fichier. Colonnes attendues : nom;adresse;telephone;ouverture;fermeture");
+ await post("pharmacies",add,"return=minimal");toast(add.length+" pharmacie(s) ajoutée(s)"+(bad?", "+bad+" ignorée(s) (doublon ou ligne invalide)":""));await go("adm")})}
+function importCard(k){const s=k==="s";return `<div class="card"><b>${s?"Importer le stock de "+E(S.myPh.name):"Importer des pharmacies"}</b><p class="mute">Fichier CSV (colonnes : ${s?"nom;quantite;prix":"nom;adresse;telephone;ouverture;fermeture"}). ${s?"Les médicaments existants sont mis à jour, les nouveaux sont ajoutés. ":""}Depuis Excel : Enregistrer sous, CSV.</p><label class="btn l" style="display:block;position:relative;overflow:hidden;text-align:center">Choisir le fichier<input type="file" accept=".csv,.txt,text/csv" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;padding:0" onchange="${s?"impStock":"impPharm"}(this)"></label><button class="btn l" style="margin-top:8px" onclick="tpl('${k}')">Télécharger le modèle</button></div>`}
+async function addCourier(){const e=$("ce").value.trim(),c=$("cc").value.trim(),p=$("cp").value.trim();if(!/^\S+@\S+\.\S+$/.test(e))return toast("Entrez l'email du livreur");if(c.length<6)return toast("Numéro de châssis trop court");if(p.length<4)return toast("Entrez le numéro du permis");
+ await run(async()=>{await rpc("admin_add_courier",{p_email:e,p_chassis:c,p_license:p});toast("Livreur enregistré");await go("liv")})}
+async function setCourier(uid,st){await run(async()=>{await patch("couriers?user_id=eq."+uid,{status:st});await go("liv")})}
+
+/* ---------- ordonnance par photo, lue par le pharmacien ---------- */
+const RX_ST={envoyee:"En attente du pharmacien",en_verification:"En cours de lecture",validee:"Validée",refusee:"Refusée"};
+async function saveHours(i){const p=S.pharm[i],o=$("ho_"+i).value,c=$("hc_"+i).value;if(!o||!c)return toast("Choisissez l'ouverture et la fermeture");await run(async()=>{await patch("pharmacies?id=eq."+p.id,{opens_at:o,closes_at:c});toast("Horaires enregistrés");await go("adm")})}
+async function sendRx(){const id=S.rxphId||($("rxph")&&$("rxph").value);if(!S.blob)return toast("Ajoutez d'abord la photo de l'ordonnance");if(!id)return toast("Choisissez une pharmacie");
+ await run(async()=>{const path=S.uid+"/"+Date.now()+".jpg";await upload(path,S.blob);await post("prescriptions",{patient_id:S.uid,pharmacy_id:id,image_path:path,status:"envoyee"},"return=minimal");S.blob=null;S.rxPrev=null;toast("Ordonnance envoyée. Le pharmacien va la lire.");await go("ord")})}
+function rxLines(r){const p=S.pharm.find(x=>x.id===r.pharmacy_id),it=r.prescription_items||[];return{p:p,L:it.map(x=>{const s=p&&(p.stock||[]).find(y=>y.name.toLowerCase()===x.name.toLowerCase());return{x:x,s:s,ok:!!s&&s.quantity>=x.quantity}})}}
+function rxCard(r,i){const d=rxLines(r),p=d.p,okL=d.L.filter(l=>l.ok),tot=sum(okL,l=>l.x.quantity*l.s.price_xof);
+ return `<div class="card"><b>${E(p?p.name:"Pharmacie")}</b><br><span class="mute">${fd(r.created_at)} · ${RX_ST[r.status]||r.status}</span>`
+ +(r.status==="validee"?`<p>${d.L.map(l=>E(l.x.name)+" × "+l.x.quantity+" : "+(l.ok?XOF(l.x.quantity*l.s.price_xof):"indisponible")).join("<br>")}<br><b>Total : ${XOF(tot)}</b></p>`+(okL.length&&p&&isOpen(p)?`<button class="btn" onclick="openRx(${i})">Commander</button>`:`<p class="mute">${okL.length?"Pharmacie fermée en ce moment.":"Médicaments indisponibles."}</p>`):"")+`</div>`}
+function openRx(i){const d=rxLines(S.rxList[i]),okL=d.L.filter(l=>l.ok);if(!d.p||!okL.length)return toast("Médicaments indisponibles");S.ph=d.p;S.cart=okL.map(l=>({id:l.s.id,name:l.s.name,q:l.x.quantity,price:l.s.price_xof}));go("chk")}
+function ordHome(){return `<h2>Envoyer une ordonnance</h2>${S.rxPrev?`<img src="${S.rxPrev}" alt="Ordonnance" style="width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:var(--card);margin-bottom:10px">`:""}<label class="btn l" style="display:block;position:relative;overflow:hidden;text-align:center;margin-bottom:12px">📎 ${S.blob?"Changer la photo":"Joindre ou photographier l'ordonnance"}<input type="file" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;padding:0" onchange="pick(this)"></label><select id="rxph" aria-label="Pharmacie" onchange="S.rxphId=this.value"><option value="">Choisir la pharmacie</option>${S.pharm.map(p=>`<option value="${p.id}" ${p.id===S.rxphId?"selected":""} ${isOpen(p)?"":"disabled"}>${E(p.name)}${isOpen(p)?"":" (fermée)"}</option>`).join("")}</select><button class="btn" onclick="sendRx()">Envoyer à la pharmacie</button><p class="mute">Le pharmacien lit votre ordonnance et prépare la liste des médicaments avec le prix. Vous confirmez ensuite et vous payez. Vous n'avez rien à écrire.</p><button class="btn l" onclick="S.rxView='type';draw()">Je préfère saisir les médicaments moi-même</button><h3>Mes ordonnances</h3>`+(S.rxList.length?S.rxList.map((r,i)=>rxCard(r,i)).join(""):`<p class="mute">Aucune ordonnance envoyée.</p>`)}
+async function viewRx(i){await run(async()=>{const r=S.rxIn[i],get1=()=>fetch(URL_+"/storage/v1/object/authenticated/prescriptions/"+r.image_path,{headers:{apikey:KEY,Authorization:"Bearer "+S.tok}});let res=await get1();if(res.status===401&&await refresh())res=await get1();if(!res.ok)throw new Error("Photo introuvable");S.rxImg[r.id]=URL.createObjectURL(await res.blob());draw()})}
+async function addRxItem(i){const r=S.rxIn[i],s=S.stock.find(x=>x.id===$("rs_"+i).value),q=parseInt($("rq_"+i).value);if(!s||isNaN(q)||q<1)return toast("Choisissez un médicament et une quantité");if(q>s.quantity)return toast("Stock insuffisant : "+s.quantity+" disponible(s)");
+ await run(async()=>{await post("prescription_items",{prescription_id:r.id,name:s.name,quantity:q},"return=minimal");await go("rx")})}
+async function delRxItem(id){await run(async()=>{await remove("prescription_items?id=eq."+id);await go("rx")})}
+async function rxDone(id,st){const r=S.rxIn.find(x=>x.id===id);if(st==="validee"&&!(r.prescription_items||[]).length)return toast("Ajoutez d'abord les médicaments de l'ordonnance");
+ await run(async()=>{await patch("prescriptions?id=eq."+id,{status:st});toast(st==="validee"?"Ordonnance validée : le patient peut commander":"Ordonnance refusée");await go("rx")})}
+
+/* ---------- écrans ---------- */
+const orderCard=o=>`<div class="card"><b>${fd(o.created_at)}</b><br><span class="mute">${E(o.ref)}${o.pharmacies?" · "+E(o.pharmacies.name):""}</span><p>${(o.order_items||[]).map(i=>E(i.name)+" × "+i.quantity).join("<br>")}<br>Médicaments : ${XOF(o.subtotal_xof)}${o.mode==="livraison"?"<br>Livraison : "+XOF(o.delivery_fee_xof):""}<br><b>Total : ${XOF(total(o))}</b><br><span class="mute">${o.mode==="livraison"?"Livraison":"Retrait"} · ${E(o.payment_method||"")} · ${ST[o.status]||o.status}</span></p>`;
+const V={
+ welcome(){return `<div style="min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:24px 0"><svg width="84" height="84" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="42" fill="#1f8a4c"/><path d="M34 20h16v14h14v16H50v14H34V50H20V34h14z" fill="#fff"/></svg><h1 style="margin:0;font-size:34px">SANTÉ-CI</h1><p style="margin:0;font-size:18px">Vos médicaments, trouvés et livrés près de chez vous.</p><div style="text-align:left;margin:10px 0;line-height:1.8">✓ Trouvez une pharmacie ouverte<br>✓ Envoyez votre ordonnance en photo<br>✓ Payez par mobile money<br>✓ Suivez votre commande</div><button class="btn" onclick="go('login')">Commencer</button><button class="btn l" onclick="go('reg')">Créer un compte</button><p class="mute" style="font-size:13px;margin-top:16px">Nys-Ktechnology</p></div>`},
+ login(){return `<h1 style="margin-top:60px">Bienvenue à SANTÉ-CI</h1><h2>Je me connecte</h2><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Mot de passe" autocomplete="current-password"><div class="row"><button class="btn d" onclick="doLogin()">Connexion</button><button class="btn l" onclick="go('reg')">S'inscrire</button></div>`},
+ reg(){return `<h1 style="margin-top:40px">Je m'inscris à SANTÉ-CI</h1><input id="nm" placeholder="Nom et prénom" autocomplete="name"><input id="tl" type="tel" placeholder="Téléphone" autocomplete="tel"><input id="em" type="email" placeholder="Email" autocomplete="email"><input id="pw" type="password" placeholder="Mot de passe (6 caractères minimum)" autocomplete="new-password"><button class="btn" onclick="doReg()">S'inscrire</button><p class="mute" style="text-align:center"><a href="#" onclick="go('login');return false">J'ai déjà un compte</a></p>`},
+ pharm(){return `<h2>Pharmacies</h2>`+(S.pharm.length?S.pharm.map((p,i)=>`<button class="card pharm" onclick="openPh(${i})"><span><b>${E(p.name)}</b><br><span class="mute">${E(p.address)}<br>${hh(p.opens_at)} à ${hh(p.closes_at)}</span></span><span class="pill"><i class="dot ${isOpen(p)?"":"c"}"></i>${isOpen(p)?"Ouvert":"Fermé"}</span></button>`).join(""):`<p class="mute">Aucune pharmacie pour l'instant.</p>`)},
+ det(){const p=S.ph,open=isOpen(p),st=(p.stock||[]).slice().sort((a,b)=>a.name.localeCompare(b.name));
+  return `<h2>${E(p.name)}</h2><p class="mute">${E(p.address)}${p.phone?"<br>Tél : "+E(p.phone):""}</p><p class="pill"><i class="dot ${open?"":"c"}"></i>${open?"Ouvert":"Fermé"} <span class="mute">&nbsp;${hh(p.opens_at)} à ${hh(p.closes_at)}</span></p>`
+  +(p.phone?`<a class="btn l" style="margin:10px 0" href="tel:${E(p.phone)}">Appeler</a>`:"")+`<h3>Médicaments</h3>`
+  +(st.length?st.map(s=>`<div class="card"><div class="pharm"><span><b>${E(s.name)}</b><br><span class="mute">${XOF(s.price_xof)} · ${s.quantity>0?s.quantity+" en stock":"Indisponible"}</span></span>${s.quantity>0?`<span class="row" style="align-items:center;gap:6px;flex:none"><button class="btn l" style="width:36px;padding:6px" onclick="cartAdd('${s.id}',-1)" aria-label="Moins">−</button><b>${cartQ(s.id)}</b><button class="btn l" style="width:36px;padding:6px" onclick="cartAdd('${s.id}',1)" aria-label="Plus">+</button></span>`:""}</div></div>`).join(""):`<p class="mute">Aucun médicament enregistré.</p>`)
+  +(S.cart.length?`<div class="card" style="background:var(--gl)"><b>Panier : ${XOF(cartTotal())}</b>${open?`<button class="btn" style="margin-top:8px" onclick="go('chk')">Commander</button>`:`<p class="mute">Pharmacie fermée : commande impossible.</p>`}</div>`:"")},
+ chk(){const p=S.ph,t=cartTotal(),fee=S.mode==="livraison"?(S.set.delivery_fee||0):0;
+  return `<div class="card"><b>${E(p.name)}</b>${S.cart.map(c=>`<p>${E(c.name)}<br><span class="mute">${c.q} × ${XOF(c.price)} =${XOF(c.q*c.price)}</span></p>`).join("")}<p>Médicaments : ${XOF(t)}${fee?"<br>Livraison : "+XOF(fee):""}<br><b>Total : ${XOF(t+fee)}</b></p></div>`
+  +`<h3>Réception</h3><div class="row"><button class="pay ${S.mode==="livraison"?"on":""}" onclick="S.mode='livraison';draw()">Livraison</button><button class="pay ${S.mode==="retrait"?"on":""}" onclick="S.mode='retrait';draw()">Retrait</button></div>`
+  +(S.mode==="livraison"?`<input placeholder="Adresse de livraison (quartier, repère)" value="${E(S.addr)}" oninput="S.addr=this.value">`:"")
+  +`<h3>Moyen de paiement</h3>`+PAY.map((n,i)=>`<button class="pay ${S.pm===i?"on":""}" onclick="S.pm=${i};draw()">${n}</button>`).join("")
+  +`<p class="mute">Paiement de test : aucun argent n'est prélevé.</p><button class="btn" onclick="payNow()">Payer ${XOF(t+fee)}</button>`},
+ ord(){if(S.rxView==="type")return V.ordType();return ordHome()},
+ ordType(){
+  if(S.rxStage===0){const names=Array.from(new Set(S.pharm.reduce((a,p)=>a.concat((p.stock||[]).map(s=>s.name)),[])));
+   return `<button class="btn l" style="margin-bottom:10px" onclick="S.rxView='home';draw()">‹ Envoi par photo seule</button><h2>Saisie manuelle</h2>${S.rxPrev?`<img src="${S.rxPrev}" alt="Ordonnance" style="width:100%;max-height:220px;object-fit:contain;border-radius:12px;background:var(--card);margin-bottom:10px">`:""}<label class="btn l" style="display:block;position:relative;overflow:hidden;text-align:center;margin-bottom:14px">📎 ${S.blob?"Changer la photo":"Joindre ou photographier l'ordonnance"}<input type="file" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;padding:0" onchange="pick(this)"></label>
+   <div class="card"><b>Médicaments de l'ordonnance</b><p class="mute">Recopiez-les pour calculer le prix et trouver où les acheter. Le pharmacien confirme toujours.</p>${S.rx.map((x,i)=>`<div class="pharm" style="border-top:1px solid var(--line);padding:8px 0;margin-top:8px"><span>${E(x.k)}</span><span class="row" style="align-items:center;gap:6px;flex:none"><button class="btn l" style="width:36px;padding:6px" onclick="chRx(${i},-1)" aria-label="Moins">−</button><b>${x.q}</b><button class="btn l" style="width:36px;padding:6px" onclick="chRx(${i},1)" aria-label="Plus">+</button><button class="btn l" style="width:auto;padding:6px 10px" onclick="delRx(${i})">Retirer</button></span></div>`).join("")}<datalist id="dl">${names.map(k=>`<option value="${E(k)}">`).join("")}</datalist><input id="rn" list="dl" placeholder="Nom du médicament" style="margin-top:10px"><div class="row"><input id="rq" type="number" min="1" value="1" aria-label="Quantité"><button class="btn l" onclick="addRx()">Ajouter</button></div></div><button class="btn" onclick="findRx()">Trouver où acheter</button>`}
+  const R=S.pharm.map((p,i)=>({p:p,i:i,c:rxCalc(p),o:isOpen(p)})).sort((a,b)=>((b.c.ok.length===S.rx.length)-(a.c.ok.length===S.rx.length))||(b.o-a.o)||(b.c.ok.length-a.c.ok.length)||(a.c.tot-b.c.tot)),best=R.find(r=>r.c.ok.length===S.rx.length&&r.o),any=R.find(r=>r.c.ok.length===S.rx.length);
+  return `<h2>Où trouver vos médicaments</h2>${best?`<div class="card" style="background:var(--gl)"><b>Meilleure option : ${E(best.p.name)}</b><br>Tout est disponible,${XOF(best.c.tot)}</div>`:`<div class="card"><b>${any?"Des pharmacies ont tout, mais elles sont fermées en ce moment.":"Aucune pharmacie n'a tous ces médicaments."}</b><p class="mute">${any?"Réessayez pendant leurs horaires d'ouverture.":"Choisissez celle qui en couvre le plus."}</p></div>`}`
+  +R.map(r=>{const all=r.c.ok.length===S.rx.length;return `<div class="card"><b>${E(r.p.name)}</b><br><span class="mute">${E(r.p.address)} (${hh(r.p.opens_at)} à ${hh(r.p.closes_at)})</span><p class="pill"><i class="dot ${r.o?"":"c"}"></i>${r.o?"Ouvert":"Fermé"}, ${all?"tout disponible":r.c.ok.length+" sur "+S.rx.length+" disponibles"}</p>${r.c.L.map(l=>`<div class="pharm" style="padding:4px 0"><span>${E(l.k)} ×${l.q}</span><span class="${l.ok?"":"mute"}">${l.ok?XOF(l.q*l.u):(l.n>0?"Stock : "+l.n:"Indisponible")}</span></div>${!l.ok&&l.alt.length?`<div class="mute">Disponible aussi : ${l.alt.map(E).join(", ")}</div>`:""}`).join("")}<p>Total disponible : <b>${XOF(r.c.tot)}</b></p><button class="btn" ${r.o&&r.c.ok.length?"":"disabled"} onclick="rxGo(${r.i})">Envoyer l'ordonnance ici et commander</button></div>`}).join("")+`<button class="btn l" onclick="S.rxStage=0;draw()">Modifier la liste</button>`},
+ hist(){return `<h2>Mon historique</h2>`+(S.orders.length?S.orders.map(o=>`<button class="card" style="display:block;width:100%;text-align:left" onclick="go('rec',{ordId:'${o.id}'})"><b>${E(o.pharmacies?o.pharmacies.name:"")}</b><br><span class="mute">${fd(o.created_at)}<br>${(o.order_items||[]).map(i=>E(i.name)+" × "+i.quantity).join(", ")}</span><br><b>${XOF(total(o))}</b> <span class="mute">· ${ST[o.status]||o.status}</span></button>`).join(""):`<p class="mute">Aucune commande pour l'instant.</p>`)},
+ rec(){const o=S.o;if(!o)return `<p class="mute">Reçu introuvable.</p>`;const p=o.pharmacies||{},c=S.cour;
+  return `<div class="card"><h2 style="margin-top:0">Reçu de paiement</h2><p class="mute">N° ${E(o.ref)}</p><p><b>Date :</b> ${fd(o.created_at)}</p><p><b>${E(p.name)}</b><br>${E(p.address)}<br>Tél : ${E(p.phone||"non renseigné")}</p><p><b>Médicaments</b><br>${(o.order_items||[]).map(i=>E(i.name)+" ("+i.quantity+" × "+i.unit_price_xof+" XOF)").join("<br>")}</p><p>${o.mode==="livraison"?"<b>Livraison :</b> "+XOF(o.delivery_fee_xof):"<b>Retrait en pharmacie</b>"}<br><b>Total payé :</b> ${XOF(total(o))}</p><p><b>Moyen de paiement :</b> ${E(o.payment_method||"")}<br><b>Statut :</b> ${ST[o.status]||o.status}</p>`
+  +(o.mode==="livraison"?`<p><b>Livreur :</b> ${c?E(c.full_name||"")+"<br>Tél : "+E(c.phone||"")+"<br>Moto : •••• "+E(c.chassis_last4):"attribué dès qu'un livreur accepte la course"}</p><p><b>Code de livraison :</b> ${E(o.delivery_code)}<br><span class="mute">À donner au livreur à la réception.</span></p>`:`<p><b>Code de retrait :</b> ${E(o.delivery_code)}</p>`)+`</div><button class="btn" onclick="shareRec()">Partager le reçu</button><button class="btn l" style="margin-top:8px" onclick="try{window.print()}catch(e){toast('Faites une capture d\\'écran')}">Imprimer ou enregistrer en PDF</button>`},
+ pv(){if(S.role==="pharmacie"&&!S.myPh)return `<h2>Ventes</h2><div class="card">Votre compte n'est pas encore associé à une pharmacie. Contactez l'administrateur.</div>`;
+  const O=S.orders.filter(stOf),t=sum(O,o=>o.subtotal_xof),cm=sum(O,o=>o.commission_xof),act=o=>S.role!=="pharmacie"?"":o.status==="confirmee"?`<button class="btn" onclick="setSt('${o.id}','en_preparation')">Commencer la préparation</button>`:(o.status==="en_preparation"&&o.mode==="retrait")?`<button class="btn" onclick="setSt('${o.id}','retiree')">Marquer comme retirée</button>`:(o.status==="en_preparation"?`<p class="mute">En attente d'un livreur</p>`:"");
+  return `<h2>Ventes${S.myPh?" · "+E(S.myPh.name):""}</h2>`+(S.role==="pharmacie"?`<div class="card" style="background:var(--gl)"><b>Caisse de la pharmacie</b><p>Solde : <b>${XOF(S.caisse)}</b><br><span class="mute">Chaque paiement crédite la pharmacie de sa part, commission déduite.</span></p></div>`:"")
+  +`<div class="card"><b>${O.length} vente(s)</b><p>Chiffre d'affaires : ${XOF(t)}<br>Commission SANTÉ-CI : ${XOF(cm)}<br>Net pour les pharmacies : <b>${XOF(t-cm)}</b></p></div>`
+  +(O.length?O.map(o=>orderCard(o)+(act(o)?act(o):"")+`</div>`).join(""):`<p class="mute">Aucune vente pour l'instant.</p>`)},
+ stk(){if(!S.myPh)return `<h2>Stock</h2><div class="card">Votre compte n'est pas encore associé à une pharmacie. Contactez l'administrateur.</div>`;
+  return `<h2>Stock · ${E(S.myPh.name)}</h2>`+(S.stock.length?S.stock.map(s=>`<div class="card"><b>${E(s.name)}</b><div class="row" style="margin-top:8px"><input id="q_${s.id}" type="number" min="0" value="${s.quantity}" aria-label="Quantité"><input id="p_${s.id}" type="number" min="1" value="${s.price_xof}" aria-label="Prix"></div><div class="row"><button class="btn" onclick="saveStock('${s.id}')">Enregistrer</button><button class="btn l" onclick="delStock('${s.id}')">Retirer</button></div></div>`).join(""):`<p class="mute">Aucun médicament enregistré.</p>`)
+  +importCard("s")+`<div class="card"><b>Ajouter ou mettre à jour un médicament</b><input id="sn" placeholder="Nom (ex. Paracétamol 500mg)"><div class="row"><input id="sq" type="number" min="0" placeholder="Quantité"><input id="sp" type="number" min="1" placeholder="Prix en XOF"></div><p class="mute">Si le nom existe déjà, la quantité et le prix sont mis à jour.</p><button class="btn" onclick="addStock()">Enregistrer le médicament</button></div>`},
+ adm(){return `<h2>Pharmacies</h2>`+S.pharm.map((p,i)=>`<div class="card"><b>${E(p.name)}</b><br><span class="mute">${E(p.address)}<br>${hh(p.opens_at)} à ${hh(p.closes_at)}${p.phone?" · "+E(p.phone):""} · ${(p.stock||[]).length} médicament(s)</span><button class="btn l" style="margin-top:8px" onclick="manage(${i})">Gérer le stock</button><div class="row" style="margin-top:8px"><input id="ho_${i}" type="time" value="${hh(p.opens_at)}" aria-label="Ouverture"><input id="hc_${i}" type="time" value="${hh(p.closes_at)}" aria-label="Fermeture"></div><button class="btn l" onclick="saveHours(${i})">Enregistrer les horaires</button></div>`).join("")
+  +`<div class="card"><b>Nouvelle pharmacie</b><input id="pn" placeholder="Nom de la pharmacie"><input id="pa" placeholder="Adresse, repère"><input id="pt" type="tel" placeholder="Téléphone"><p class="mute">Ouverture et fermeture</p><div class="row"><input id="po" type="time" value="08:00"><input id="pc" type="time" value="20:00"></div><button class="btn" onclick="addPharm()">Ajouter la pharmacie</button></div>`
+  +importCard("p")+`<div class="card"><b>Associer un compte à une pharmacie</b><p class="mute">Le pharmacien crée d'abord son compte dans l'application, puis vous l'associez ici avec son email.</p><input id="le" type="email" placeholder="Email du pharmacien"><select id="lp" aria-label="Pharmacie"><option value="">Choisir la pharmacie</option>${S.pharm.map(p=>`<option value="${p.id}">${E(p.name)}</option>`).join("")}</select><button class="btn" onclick="linkStaff()">Associer</button></div>`},
+ com(){const by=t=>sum(S.rows.filter(r=>r.owner_type===t),r=>r.amount_xof);
+  return `<h2>Caisse</h2><div class="card" style="background:var(--gl)"><b>Compte de l'application</b><p>Solde : <b>${XOF(by("application"))}</b><br><span class="mute">Commissions et frais de livraison, moins les frais reversés aux livreurs.</span></p></div><div class="card"><b>Caisses des pharmacies</b><p>Total : ${XOF(by("pharmacie"))}</p></div><div class="card"><b>Gains des livreurs</b><p>Total : ${XOF(by("livreur"))}</p></div>`},
+ set(){const f=(k,l,h)=>`<div class="card"><b>${l}</b><p class="mute">${h}</p><div class="row"><input id="s_${k}" type="number" min="0" step="any" value="${S.set[k]!=null?S.set[k]:0}"><button class="btn" onclick="saveSet('${k}')">Enregistrer</button></div></div>`;
+  return `<h2>Réglages</h2>`+f("commission_rate","Taux de commission (%)","Part prélevée par SANTÉ-CI sur chaque vente. Les anciennes ventes ne changent pas.")+f("delivery_fee","Frais de livraison (XOF)","Montant fixe versé au livreur.")+f("test_mode","Paiement de test (1 = activé, 0 = désactivé)","Mettez 0 avant le lancement : le vrai paiement mobile money sera alors obligatoire.")},
+ rx(){if(!S.myPh)return `<h2>Ordonnances</h2><div class="card">Votre compte n'est pas encore associé à une pharmacie. Contactez l'administrateur.</div>`;
+  return `<h2>Ordonnances reçues</h2>`+(S.rxIn.length?S.rxIn.map((r,i)=>{const open=r.status==="envoyee"||r.status==="en_verification";
+   return `<div class="card"><b>${fd(r.created_at)}</b> <span class="mute">· ${RX_ST[r.status]||r.status}</span>`
+   +(S.rxImg[r.id]?`<img src="${S.rxImg[r.id]}" alt="Ordonnance" style="width:100%;border-radius:10px;margin-top:8px">`:`<button class="btn l" style="margin-top:8px" onclick="viewRx(${i})">Voir la photo</button>`)
+   +`<p>${(r.prescription_items||[]).map(x=>E(x.name)+" × "+x.quantity+(open?` <a href="#" onclick="delRxItem('${x.id}');return false">retirer</a>`:"")).join("<br>")||'<span class="mute">Aucun médicament saisi</span>'}</p>`
+   +(open?`<select id="rs_${i}" aria-label="Médicament">${S.stock.map(s=>`<option value="${s.id}">${E(s.name)} (${s.quantity} en stock,${s.price_xof} XOF)</option>`).join("")}</select><div class="row"><input id="rq_${i}" type="number" min="1" value="1" aria-label="Quantité"><button class="btn l" onclick="addRxItem(${i})">Ajouter</button></div><div class="row"><button class="btn" onclick="rxDone('${r.id}','validee')">Valider</button><button class="btn l" onclick="rxDone('${r.id}','refusee')">Refuser</button></div>`:"")+`</div>`}).join(""):`<p class="mute">Aucune ordonnance reçue.</p>`)},
+ liv(){if(S.role!=="admin")return `<h2>Espace livreur</h2><div class="card">L'espace livreur (courses, code de remise, gains) arrive à l'étape suivante.</div>`;
+  return `<h2>Livreurs</h2>`+(S.couriers.length?S.couriers.map(c=>{const p=c.profiles||{},l=c.license_number||"";return `<div class="card"><b>${E(p.full_name||"Sans nom")}</b> <span class="pill"><i class="dot ${c.status==="actif"?"":"c"}"></i>${E(c.status)}</span><br><span class="mute">Tél : ${E(p.phone||"non renseigné")}<br>Châssis : ${E(c.chassis_number)}<br>Permis : ${E(l.slice(0,2)+"•".repeat(Math.max(0,l.length-4))+l.slice(-2))}</span><button class="btn l" style="margin-top:8px" onclick="setCourier('${c.user_id}','${c.status==="actif"?"suspendu":"actif"}')">${c.status==="actif"?"Suspendre":"Activer"}</button></div>`}).join(""):`<p class="mute">Aucun livreur enregistré.</p>`)
+  +`<div class="card"><b>Ajouter un livreur</b><p class="mute">Le livreur crée d'abord son compte dans l'application (Créer un compte). Saisissez ensuite son email et les informations de sa moto.</p><input id="ce" type="email" placeholder="Email du livreur"><input id="cc" placeholder="Numéro de châssis de la moto" autocapitalize="characters"><input id="cp" placeholder="Numéro du permis de conduire" autocapitalize="characters"><button class="btn" onclick="addCourier()">Enregistrer le livreur</button></div>`}
+};
+boot();
+</script></body></html>
